@@ -1928,7 +1928,7 @@ Note: When applying a logarithmic transformation to a specific axis, the system
 assumes that the axes limits are greater than zero.
 
 """
-function setscale(options::Int)
+function setscale(options)
   scale = ccall( libGR_ptr(:gr_setscale),
                 Int32,
                 (Int32, ),
@@ -3572,18 +3572,18 @@ const MARKERTYPE_VLINE = -30
 const MARKERTYPE_HLINE = -31
 const MARKERTYPE_OMARK = -32
 
-const OPTION_X_LOG = 1
-const OPTION_Y_LOG = 2
-const OPTION_Z_LOG = 4
-const OPTION_FLIP_X = 8
-const OPTION_FLIP_Y = 16
-const OPTION_FLIP_Z = 32
-const OPTION_X_LOG2 = 64
-const OPTION_Y_LOG2 = 128
-const OPTION_Z_LOG2 = 256
-const OPTION_X_LN = 512
-const OPTION_Y_LN = 1024
-const OPTION_Z_LN = 2048
+const OPTION_X_LOG  = UInt32(1)
+const OPTION_Y_LOG  = UInt32(2)
+const OPTION_Z_LOG  = UInt32(4)
+const OPTION_FLIP_X = UInt32(8)
+const OPTION_FLIP_Y = UInt32(16)
+const OPTION_FLIP_Z = UInt32(32)
+const OPTION_X_LOG2 = UInt32(64)
+const OPTION_Y_LOG2 = UInt32(128)
+const OPTION_Z_LOG2 = UInt32(256)
+const OPTION_X_LN   = UInt32(512)
+const OPTION_Y_LN   = UInt32(1024)
+const OPTION_Z_LN   = UInt32(2048)
 
 const OPTION_LINES = 0
 const OPTION_MESH = 1
