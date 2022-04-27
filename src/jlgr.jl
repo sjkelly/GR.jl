@@ -1156,11 +1156,9 @@ function send_meta(target)
     end
 end
 
-function send_serialized(target)
+function send_serialized(target, plt)
     handle = connect(target, 8001)
-    io = IOBuffer()
-    serialize(io, Dict("kvs" => plt[].kvs, "args" => plt[].args))
-    write(handle, io.data)
+    serialize(handle, Dict("kvs" => plt.kvs, "args" => plt.args))
     close(handle)
 end
 
@@ -1186,7 +1184,7 @@ function plot_data(plt, flag=true)
         if target == "js" || target == "meta" || target == "pluto" || target == "js-server"
             send_meta(0)
         else
-            send_serialized(target)
+            send_serialized(target, plt)
         end
         if target == "pluto" || target == "js"
           return GR.js.get_html()
