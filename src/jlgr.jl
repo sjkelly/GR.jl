@@ -405,7 +405,7 @@ function set_window(kind)
         xmin -= 0.5
         xmax += 0.5
     end
-    if scale & GR.OPTION_X_LOG == 0
+    if iszero(scale & GR.OPTION_X_LOG)
         if !haskey(plt[].kvs, :xlim) && plt[].kvs[:panzoom] === nothing && !(kind in (:heatmap, :polarheatmap, :nonuniformpolarheatmap))
             xmin, xmax = GR.adjustlimits(xmin, xmax)
         end
@@ -418,7 +418,7 @@ function set_window(kind)
     else
         xtick = majorx = 1
     end
-    if scale & GR.OPTION_FLIP_X == 0
+    if iszero(scale & GR.OPTION_FLIP_X)
         xorg = (xmin, xmax)
     else
         xorg = (xmax, xmin)
@@ -431,9 +431,9 @@ function set_window(kind)
         ymax += 0.5
     end
     if kind == :hist && !haskey(plt[].kvs, :ylim)
-        ymin = scale & GR.OPTION_Y_LOG == 0 ? 0 : 1
+        ymin = iszero(scale & GR.OPTION_Y_LOG) ? 0 : 1
     end
-    if scale & GR.OPTION_Y_LOG == 0
+    if iszero(scale & GR.OPTION_Y_LOG)
         if !haskey(plt[].kvs, :ylim) && plt[].kvs[:panzoom] === nothing && !(kind in (:heatmap, :polarheatmap, :nonuniformpolarheatmap))
             ymin, ymax = GR.adjustlimits(ymin, ymax)
         end
@@ -446,7 +446,7 @@ function set_window(kind)
     else
         ytick = majory = 1
     end
-    if scale & GR.OPTION_FLIP_Y == 0
+    if iszero(scale & GR.OPTION_FLIP_Y)
         yorg = (ymin, ymax)
     else
         yorg = (ymax, ymin)
@@ -455,7 +455,7 @@ function set_window(kind)
 
     if kind in (:wireframe, :surface, :plot3, :scatter3, :trisurf, :volume)
         zmin, zmax = plt[].kvs[:zrange]
-        if scale & GR.OPTION_Z_LOG == 0
+        if iszero(scale & GR.OPTION_Z_LOG)
             if !haskey(plt[].kvs, :zlim)
                 zmin, zmax = GR.adjustlimits(zmin, zmax)
             end
@@ -468,7 +468,7 @@ function set_window(kind)
         else
             ztick = majorz = 1
         end
-        if scale & GR.OPTION_FLIP_Z == 0
+        if iszero(scale & GR.OPTION_FLIP_Z)
             zorg = (zmin, zmax)
         else
             zorg = (zmax, zmin)
@@ -596,7 +596,7 @@ function draw_polar_axes()
     n = trunc(Int, (rmax - rmin) / tick)
     for i in 0:n
         r = rmin + i * tick / (rmax - rmin)
-        if i % 2 == 0
+        if iszero(i % 2)
             GR.setlinecolorind(88)
             if i > 0
                 GR.drawarc(-r, r, -r, r, 0, 359)
@@ -657,8 +657,8 @@ function legend_size()
     w, h
 end
 
-hasline(mask) = ( mask == 0x00 || (mask & 0x01 != 0) )
-hasmarker(mask) = ( mask & 0x02 != 0)
+hasline(mask) = ( iszero(mask) || !iszero(mask & 0x01) )
+hasmarker(mask) = ( !iszero(mask & 0x02))
 
 function draw_legend()
     w, h = legend_size()
@@ -747,7 +747,7 @@ function colorbar(off=0, colors=256)
     diag = sqrt((viewport[2] - viewport[1])^2 + (viewport[4] - viewport[3])^2)
     charheight = max(0.016 * diag, 0.012)
     GR.setcharheight(charheight)
-    if plt[].kvs[:scale] & GR.OPTION_Z_LOG == 0
+    if iszero(plt[].kvs[:scale] & GR.OPTION_Z_LOG)
         ztick = auto_tick(zmin, zmax)
         GR.axes(0, ztick, 1, zmin, 0, 1, 0.005)
     else
@@ -1389,7 +1389,7 @@ function plot_data(flag=true)
             clabels = get(plt[].kvs, :clabels, false)
             if typeof(levels) <: Int
                 hmin, hmax = GR.adjustrange(zmin, zmax)
-                h = linspace(hmin, hmax, levels == 0 ? 21 : levels + 1)
+                h = linspace(hmin, hmax, iszero(levels) ? 21 : levels + 1)
             else
                 h = float(levels)
             end
@@ -1407,7 +1407,7 @@ function plot_data(flag=true)
             clabels = get(plt[].kvs, :clabels, false)
             if typeof(levels) <: Int
                 hmin, hmax = GR.adjustrange(zmin, zmax)
-                h = linspace(hmin, hmax, levels == 0 ? 21 : levels + 1)
+                h = linspace(hmin, hmax, iszero(levels) ? 21 : levels + 1)
             else
                 h = float(levels)
             end
@@ -1601,7 +1601,7 @@ function plot_args(@nospecialize args; fmt=:xys)
                         y = popfirst!(args)
                         z = nothing
                         c = nothing
-                    elseif fmt == :xyzc && length(args) == 0
+                    elseif fmt == :xyzc && isempty(args)
                         z = a'
                         nx, ny = size(z)
                         if haskey(plt[].kvs, :xlim)
@@ -2433,7 +2433,7 @@ documentation of GR.textext.
     julia> title("")
 """
 function title(s)
-    if s != ""
+    if !isempty(s)
         plt[].kvs[:title] = s
     else
         delete!(plt[].kvs, :title)
@@ -2461,7 +2461,7 @@ documentation of GR.textext.
     julia> xlabel("")
 """
 function xlabel(s)
-    if s != ""
+    if !isempty(s)
         plt[].kvs[:xlabel] = s
     else
         delete!(plt[].kvs, :xlabel)
@@ -2480,7 +2480,7 @@ documentation of GR.textext.
 :param y_label: the y-axis label
 """
 function ylabel(s)
-    if s != ""
+    if !isempty(s)
         plt[].kvs[:ylabel] = s
     else
         delete!(plt[].kvs, :ylabel)
