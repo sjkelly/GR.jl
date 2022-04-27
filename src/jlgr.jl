@@ -240,8 +240,8 @@ end
 
 function fix_minmax(a, b)
     if a == b
-        a -= a != 0 ? 0.1 * a : 0.1
-        b += b != 0 ? 0.1 * b : 0.1
+        a -= !iszero(a) ? 0.1 * a : 0.1
+        b += !iszero(b) ? 0.1 * b : 0.1
     end
     a, b
 end
@@ -268,7 +268,7 @@ function minmax(kind)
     scale = plt[].kvs[:scale]
     for (x, y, z, c, spec) in plt[].args
         if x !== nothing
-            if scale & GR.OPTION_X_LOG != 0
+            if !iszero(scale & GR.OPTION_X_LOG)
                 x = map(v -> v>0 ? v : NaN, x)
             end
             x0, x1 = Extrema64(x)
@@ -280,7 +280,7 @@ function minmax(kind)
             xmin, xmax = 0, 1
         end
         if y !== nothing
-            if scale & GR.OPTION_Y_LOG != 0
+            if !iszero(scale & GR.OPTION_Y_LOG)
                 y = map(v -> v>0 ? v : NaN, y)
             end
             y0, y1 = Extrema64(y)
@@ -292,7 +292,7 @@ function minmax(kind)
             ymin, ymax = 0, 1
         end
         if z !== nothing
-            if scale & GR.OPTION_Z_LOG != 0
+            if !iszero(scale & GR.OPTION_Z_LOG)
                 z = map(v -> v>0 ? v : NaN, z)
             end
             z0, z1 = Extrema64(z)
@@ -512,10 +512,10 @@ function draw_axes(kind, pass=1)
     ytick, yorg, majory = plt[].kvs[:yaxis]
     drawgrid = get(plt[].kvs, :grid, true)
     # enforce scientific notation for logarithmic axes labels
-    if plt[].kvs[:scale] & GR.OPTION_X_LOG != 0
+    if !iszero(plt[].kvs[:scale] & GR.OPTION_X_LOG)
         xtick = 10
     end
-    if plt[].kvs[:scale] & GR.OPTION_Y_LOG != 0
+    if !iszero(plt[].kvs[:scale] & GR.OPTION_Y_LOG)
         ytick = 10
     end
     GR.setlinecolorind(1)
