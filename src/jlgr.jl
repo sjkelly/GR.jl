@@ -902,7 +902,7 @@ new row starting after every **num_columns** subplots.
 """
 function subplot(nr, nc, p)
     xmin, xmax, ymin, ymax = 1, 0, 1, 0
-    for i in collect(p)
+    for i in p
         r = nr - div(i-1, nc)
         c = (i-1) % nc + 1
         xmin = min(xmin, (c-1)/nc)
@@ -911,8 +911,8 @@ function subplot(nr, nc, p)
         ymax = max(ymax, r/nr)
     end
     plt[].kvs[:subplot] = [xmin, xmax, ymin, ymax]
-    plt[].kvs[:clear] = collect(p)[1] == 1
-    plt[].kvs[:update] = collect(p)[end] == nr * nc
+    plt[].kvs[:clear] = first(p) == 1
+    plt[].kvs[:update] = last(p) == nr * nc
 end
 
 """
