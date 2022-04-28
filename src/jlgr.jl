@@ -1532,11 +1532,13 @@ function plot_data(plt, flag=true)
     return
 end
 
-function plot_args(@nospecialize args; fmt=:xys)
+function plot_args!(plt, @nospecialize args; fmt=:xys, append=false)
 
     args = Any[args...]
 
-    pltargs = NTuple{5, Any}[]
+    if !append
+        empty!(plt.args)
+    end
 
     while length(args) > 0
 
@@ -1562,8 +1564,8 @@ function plot_args(@nospecialize args; fmt=:xys)
                     else
                         y = a
                         n = isrowvec(y) ? size(y, 2) : size(y, 1)
-                        if haskey(plt[].kvs, :xlim)
-                            xmin, xmax = plt[].kvs[:xlim]
+                        if haskey(plt.kvs, :xlim)
+                            xmin, xmax = plt.kvs[:xlim]
                             x = linspace(xmin, xmax, n)
                         else
                             x = linspace(1, n, n)
@@ -1602,14 +1604,14 @@ function plot_args(@nospecialize args; fmt=:xys)
                     elseif fmt == :xyzc && isempty(args)
                         z = a'
                         nx, ny = size(z)
-                        if haskey(plt[].kvs, :xlim)
-                            xmin, xmax = plt[].kvs[:xlim]
+                        if haskey(plt.kvs, :xlim)
+                            xmin, xmax = plt.kvs[:xlim]
                             x = linspace(xmin, xmax, nx)
                         else
                             x = linspace(1, nx, nx)
                         end
-                        if haskey(plt[].kvs, :ylim)
-                            ymin, ymax = plt[].kvs[:ylim]
+                        if haskey(plt.kvs, :ylim)
+                            ymin, ymax = plt.kvs[:ylim]
                             y = linspace(ymin, ymax, ny)
                         else
                             y = linspace(1, ny, ny)
@@ -1667,31 +1669,31 @@ function plot_args(@nospecialize args; fmt=:xys)
 
         if z === nothing
             if isa(x, AbstractVector) && isa(y, AbstractVector)
-                push!(pltargs, (x, y, z, c, spec))
+                push!(plt.args, (x, y, z, c, spec))
             elseif isa(x, AbstractVector)
                 if length(x) == size(y, 1)
                     for j = 1:size(y, 2)
-                        push!(pltargs, (x, view(y,:,j), z, c, spec))
+                        push!(plt.args, (x, view(y,:,j), z, c, spec))
                     end
                 else
                     for i = 1:size(y, 1)
-                        push!(pltargs, (x, view(y,i,:), z, c, spec))
+                        push!(plt.args, (x, view(y,i,:), z, c, spec))
                     end
                 end
             elseif isa(y, AbstractVector)
                 if size(x, 1) == length(y)
                     for j = 1:size(x, 2)
-                        push!(pltargs, (view(x,:,j), y, z, c, spec))
+                        push!(plt.args, (view(x,:,j), y, z, c, spec))
                     end
                 else
                     for i = 1:size(x, 1)
-                       push!(pltargs, (view(x,i,:), y, z, c, spec))
+                       push!(plt.args, (view(x,i,:), y, z, c, spec))
                     end
                 end
             else
                 @assert size(x) == size(y)
                 for j = 1:size(y, 2)
-                    push!(pltargs, (view(x,:,j), view(y,:,j), z, c, spec))
+                    push!(plt.args, (view(x,:,j), view(y,:,j), z, c, spec))
                 end
             end
         elseif (isa(x, AbstractVector) && isa(y, AbstractVector) &&
@@ -1699,13 +1701,12 @@ function plot_args(@nospecialize args; fmt=:xys)
                  typeof(z) == Array{Int32,2} || typeof(z) == Array{Any,2})) ||
                 (isa(x, AbstractMatrix) && isa(y, AbstractMatrix) &&
                 (isa(z, AbstractMatrix)))
-            push!(pltargs, (x, y, z, c, spec))
+            push!(plt.args, (x, y, z, c, spec))
         else
-            push!(pltargs, (vec(float(x)), vec(float(y)), vec(float(z)), c, spec) )
+            push!(plt.args, (vec(float(x)), vec(float(y)), vec(float(z)), c, spec) )
         end
     end
 
-    pltargs
 end
 
 """
@@ -1738,9 +1739,9 @@ function plot(args::PlotArg...; kv...)
     create_context(:line, Dict(kv))
 
     if plt[].kvs[:ax]
-        plt[].args = append!(plt[].args, plot_args(args))
+        plot_args!(plt[], args, append=true)
     else
-        plt[].args = plot_args(args)
+        plot_args!(plt[], args)
     end
 
     plot_data(plt[])
@@ -1772,7 +1773,7 @@ This function can receive one or more of the following:
 function oplot(args::PlotArg...; kv...)
     create_context(:line, Dict(kv))
 
-    plt[].args = append!(plt[].args, plot_args(args))
+    plot_args!(plt[], args, append=true)
 
     plot_data(plt[])
 end
@@ -1811,7 +1812,7 @@ This function can receive one or more of the following:
 function stairs(args...; kv...)
     create_context(:stairs, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyac)
+    plot_args!(plt[], args, fmt=:xyac)
 
     plot_data(plt[])
 end
@@ -1855,7 +1856,7 @@ current colormap.
 function scatter(args...; kv...)
     create_context(:scatter, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyac)
+    plot_args!(plt[], args, fmt=:xyac)
 
     plot_data(plt[])
 end
@@ -1888,7 +1889,7 @@ This function can receive one or more of the following:
 function stem(args...; kv...)
     create_context(:stem, Dict(kv))
 
-    plt[].args = plot_args(args)
+    plot_args!(plt[], args)
 
     plot_data(plt[])
 end
@@ -2071,7 +2072,7 @@ provided points, a value of 0 will be used.
 function contour(args...; kv...)
     create_context(:contour, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyzc)
+    plot_args!(plt[], args, fmt=:xyzc)
 
     plot_data(plt[])
 end
@@ -2115,7 +2116,7 @@ provided points, a value of 0 will be used.
 function contourf(args...; kv...)
     create_context(:contourf, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyzc)
+    plot_args!(plt[], args, fmt=:xyzc)
 
     plot_data(plt[])
 end
@@ -2145,7 +2146,7 @@ display a series of points. It  can receive one or more of the following:
 function hexbin(args...; kv...)
     create_context(:hexbin, Dict(kv))
 
-    plt[].args = plot_args(args)
+    plot_args!(plt[], args)
 
     plot_data(plt[])
 end
@@ -2269,7 +2270,7 @@ provided points, a value of 0 will be used.
 function wireframe(args...; kv...)
     create_context(:wireframe, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyzc)
+    plot_args!(plt[], args, fmt=:xyzc)
 
     plot_data(plt[])
 end
@@ -2313,7 +2314,7 @@ provided points, a value of 0 will be used.
 function surface(args...; kv...)
     create_context(:surface, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyzc)
+    plot_args!(plt[], args, fmt=:xyzc)
 
     plot_data(plt[])
 end
@@ -2347,7 +2348,7 @@ Draw one or more three-dimensional line plots.
 function plot3(args...; kv...)
     create_context(:plot3, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyzc)
+    plot_args!(plt[], args, fmt=:xyzc)
 
     plot_data(plt[])
 end
@@ -2380,7 +2381,7 @@ color. Color values will be used in combination with the current colormap.
 function scatter3(args...; kv...)
     create_context(:scatter3, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyzc)
+    plot_args!(plt[], args, fmt=:xyzc)
 
     plot_data(plt[])
 end
@@ -2717,7 +2718,7 @@ This function can receive one or more of the following:
 function polar(args...; kv...)
     create_context(:polar, Dict(kv))
 
-    plt[].args = plot_args(args)
+    plot_args!(plt[], args)
 
     plot_data(plt[])
 end
@@ -2749,7 +2750,7 @@ plot, as the interpolation may occur in very acute triangles.
 function trisurf(args...; kv...)
     create_context(:trisurf, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyzc)
+    plot_args!(plt[], args, fmt=:xyzc)
 
     plot_data(plt[])
 end
@@ -2781,7 +2782,7 @@ plot, as the interpolation may occur in very acute triangles.
 function tricont(args...; kv...)
     create_context(:tricont, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xyzc)
+    plot_args!(plt[], args, fmt=:xyzc)
 
     plot_data(plt[])
 end
@@ -2789,7 +2790,7 @@ end
 function shade(args...; kv...)
     create_context(:shade, Dict(kv))
 
-    plt[].args = plot_args(args, fmt=:xys)
+    plot_args!(plt[], args, fmt=:xys)
 
     plot_data(plt[])
 end
