@@ -542,15 +542,15 @@ function st_seq()
 end
 
 function inqdspsize()
-  mwidth = Cdouble[0]
-  mheight = Cdouble[0]
-  width = Cint[0]
-  height = Cint[0]
+  mwidth = Ref{Cdouble}()
+  mheight = Ref{Cdouble}()
+  width = Ref{Cint}()
+  height = Ref{Cint}()
   ccall( libGR_ptr(:gr_inqdspsize),
         Nothing,
         (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cint}, Ptr{Cint}),
         mwidth, mheight, width, height)
-  return mwidth[1], mheight[1], width[1], height[1]
+  return mwidth[], mheight[], width[], height[]
 end
 
 """
@@ -1674,12 +1674,12 @@ function setcharheight(height::Real)
 end
 
 function inqcharheight()
-  _height = Cdouble[0]
+  _height = Ref{Cdouble}()
   ccall( libGR_ptr(:gr_inqcharheight),
         Nothing,
         (Ptr{Cdouble}, ),
         _height)
-  return _height[1]
+  return _height[]
 end
 
 """
@@ -1937,12 +1937,12 @@ function setscale(options)
 end
 
 function inqscale()
-  _options = Cint[0]
+  _options = Ref{Cint}()
    ccall( libGR_ptr(:gr_inqscale),
          Nothing,
          (Ptr{Int32}, ),
          _options)
-  return _options[1]
+  return _options[]
 end
 
 """
@@ -1979,15 +1979,15 @@ function setwindow(xmin::Real, xmax::Real, ymin::Real, ymax::Real)
 end
 
 function inqwindow()
-  _xmin = Cdouble[0]
-  _xmax = Cdouble[0]
-  _ymin = Cdouble[0]
-  _ymax = Cdouble[0]
+  _xmin = Ref{Cdouble}()
+  _xmax = Ref{Cdouble}()
+  _ymin = Ref{Cdouble}()
+  _ymax = Ref{Cdouble}()
   ccall( libGR_ptr(:gr_inqwindow),
         Nothing,
         (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}),
         _xmin, _xmax, _ymin, _ymax)
-  return _xmin[1], _xmax[1], _ymin[1], _ymax[1]
+  return _xmin[], _xmax[], _ymin[], _ymax[]
 end
 
 """
@@ -2022,15 +2022,15 @@ function setviewport(xmin::Real, xmax::Real, ymin::Real, ymax::Real)
 end
 
 function inqviewport()
-  _xmin = Cdouble[0]
-  _xmax = Cdouble[0]
-  _ymin = Cdouble[0]
-  _ymax = Cdouble[0]
+  _xmin = Ref{Cdouble}()
+  _xmax = Ref{Cdouble}()
+  _ymin = Ref{Cdouble}()
+  _ymax = Ref{Cdouble}()
   ccall( libGR_ptr(:gr_inqviewport),
         Nothing,
         (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}),
         _xmin, _xmax, _ymin, _ymax)
-  return _xmin[1], _xmax[1], _ymin[1], _ymax[1]
+  return _xmin[], _xmax[], _ymin[], _ymax[]
 end
 
 """
@@ -2791,12 +2791,12 @@ function colorbar()
 end
 
 function inqcolor(color::Int)
-  rgb = Cint[0]
+  rgb = Ref{Cint}()
   ccall( libGR_ptr(:gr_inqcolor),
         Nothing,
         (Int32, Ptr{Int32}),
         color, rgb)
-  return rgb[1]
+  return rgb[]
 end
 
 function inqcolorfromrgb(red::Real, green::Real, blue::Real)
@@ -2808,14 +2808,14 @@ function inqcolorfromrgb(red::Real, green::Real, blue::Real)
 end
 
 function hsvtorgb(h::Real, s::Real, v::Real)
-  r = Cdouble[0]
-  g = Cdouble[0]
-  b = Cdouble[0]
+  r = Ref{Cdouble}()
+  g = Ref{Cdouble}()
+  b = Ref{Cdouble}()
   ccall( libGR_ptr(:gr_hsvtorgb),
         Nothing,
         (Float64, Float64, Float64, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}),
         h, s, v, r, g, b)
-  return r[1], g[1], b[1]
+  return r[], g[], b[]
 end
 
 function tick(amin::Real, amax::Real)
@@ -2833,23 +2833,23 @@ function validaterange(amin::Real, amax::Real)
 end
 
 function adjustlimits(amin::Real, amax::Real)
-  _amin = Cdouble[amin]
-  _amax = Cdouble[amax]
+  _amin = Ref{Cdouble}(amin)
+  _amax = Ref{Cdouble}(amax)
   ccall( libGR_ptr(:gr_adjustlimits),
         Nothing,
         (Ptr{Float64}, Ptr{Float64}),
         _amin, _amax)
-  return _amin[1], _amax[1]
+  return _amin[], _amax[]
 end
 
 function adjustrange(amin::Real, amax::Real)
-  _amin = Cdouble[amin]
-  _amax = Cdouble[amax]
+  _amin = Ref{Cdouble}(amin)
+  _amax = Ref{Cdouble}(amax)
   ccall( libGR_ptr(:gr_adjustrange),
         Nothing,
         (Ptr{Float64}, Ptr{Float64}),
         _amin, _amax)
-  return _amin[1], _amax[1]
+  return _amin[], _amax[]
 end
 
 """
@@ -2989,34 +2989,34 @@ function endprint()
 end
 
 function ndctowc(x::Real, y::Real)
-  _x = Cdouble[x]
-  _y = Cdouble[y]
+  _x = Ref{Cdouble}(x)
+  _y = Ref{Cdouble}(y)
   ccall( libGR_ptr(:gr_ndctowc),
         Nothing,
         (Ptr{Float64}, Ptr{Float64}),
         _x, _y)
-  return _x[1], _y[1]
+  return _x[], _y[]
 end
 
 function wctondc(x::Real, y::Real)
-  _x = Cdouble[x]
-  _y = Cdouble[y]
+  _x = Ref{Cdouble}(x)
+  _y = Ref{Cdouble}(y)
   ccall( libGR_ptr(:gr_wctondc),
         Nothing,
         (Ptr{Float64}, Ptr{Float64}),
         _x, _y)
-  return _x[1], _y[1]
+  return _x[], _y[]
 end
 
 function wc3towc(x::Real, y::Real, z::Real)
-  _x = Cdouble[x]
-  _y = Cdouble[y]
-  _z = Cdouble[z]
+  _x = Ref{Cdouble}(x)
+  _y = Ref{Cdouble}(y)
+  _z = Ref{Cdouble}(z)
   ccall( libGR_ptr(:gr_wc3towc),
         Nothing,
         (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}),
         _x, _y, _z)
-  return _x[1], _y[1], _z[1]
+  return _x[], _y[], _z[]
 end
 
 """
@@ -3275,16 +3275,16 @@ function drawarrow(x1::Real, y1::Real, x2::Real, y2::Real)
 end
 
 function readimage(path)
-  width = Cint[0]
-  height = Cint[0]
+  width = Ref{Cint}()
+  height = Ref{Cint}()
   data = Array{Ptr{UInt32}}(undef, 1)
   ret = ccall( libGR_ptr(:gr_readimage),
               Int32,
               (Ptr{Cchar}, Ptr{Int32}, Ptr{Int32}, Ptr{Ptr{UInt32}}),
               path, width, height, data)
-  if width[1] > 0 && height[1] > 0
-    img = unsafe_wrap(Array{UInt32}, data[1], (width[1], height[1]))
-    return Int(width[1]), Int(height[1]), img
+  if width[] > 0 && height[] > 0
+    img = unsafe_wrap(Array{UInt32}, data[1], (width[], height[]))
+    return Int(width[]), Int(height[]), img
   else
     return 0, 0, zeros(UInt32, 0)
   end
@@ -3862,17 +3862,17 @@ end
 function delaunay(x, y)
   @assert length(x) == length(y)
   npoints = length(x)
-  ntri = Cint[0]
-  dim = Cint[3]
+  ntri = Ref{Cint}()
+  dim = 3
   triangles = Array{Ptr{Int32}}(undef, 1)
   ccall( libGR_ptr(:gr_delaunay),
         Nothing,
         (Int32, Ptr{Float64}, Ptr{Float64}, Ptr{Int32}, Ptr{Ptr{Int32}}),
         npoints, convert(Vector{Float64}, x), convert(Vector{Float64}, y),
         ntri, triangles)
-  if ntri[1] > 0
-    tri = unsafe_wrap(Array{Int32}, triangles[1], (dim[1], ntri[1]))
-    return Int(ntri[1]), tri' .+ 1
+  if ntri[] > 0
+    tri = unsafe_wrap(Array{Int32}, triangles[1], (dim, ntri[]))
+    return Int(ntri[]), tri' .+ 1
   else
     return 0, zeros(Int32, 0)
   end
@@ -4185,15 +4185,15 @@ function setcolormapfromrgb(r, g, b; positions=Nothing)
 end
 
 function panzoom(x, y, zoom)
-  xmin = Cdouble[0]
-  xmax = Cdouble[0]
-  ymin = Cdouble[0]
-  ymax = Cdouble[0]
+  xmin = Ref{Cdouble}()
+  xmax = Ref{Cdouble}()
+  ymin = Ref{Cdouble}()
+  ymax = Ref{Cdouble}()
   ccall( libGR_ptr(:gr_panzoom),
         Nothing,
         (Float64, Float64, Float64, Float64, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}),
         x, y, zoom, zoom, xmin, xmax, ymin, ymax)
-  return xmin[1], xmax[1], ymin[1], ymax[1]
+  return xmin[], xmax[], ymin[], ymax[]
 end
 
 """
@@ -4309,49 +4309,49 @@ function settextencoding(encoding)
 end
 
 function inqtextencoding()
-  encoding = Cint[0]
+  encoding = Ref{Cint}()
   ccall( libGR_ptr(:gr_inqtextencoding),
         Nothing,
         (Ptr{Cint}, ),
         encoding)
-  return encoding[1]
+  return encoding[]
 end
 
 function loadfont(name::String)
-  font = Cint[0]
+  font = Ref{Cint}()
   ccall( libGR_ptr(:gr_loadfont),
         Cstring,
         (Cstring, Ptr{Cint}),
         name, font)
-  return Int(font[1])
+  return font[]
 end
 
 function inqvpsize()
-  width = Cint[0]
-  height = Cint[0]
-  device_pixel_ratio = Cdouble[0]
+  width = Ref{Cint}()
+  height = Ref{Cint}()
+  device_pixel_ratio = Ref{Cdouble}()
   ccall( libGR_ptr(:gr_inqvpsize),
         Nothing,
         (Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}),
         width, height, device_pixel_ratio)
-  return width[1], height[1], device_pixel_ratio[1]
+  return width[], height[], device_pixel_ratio[]
 end
 
 function inqtransformationparameters()
-  cam_x = Cdouble[0]
-  cam_y = Cdouble[0]
-  cam_z = Cdouble[0]
-  up_x = Cdouble[0]
-  up_y = Cdouble[0]
-  up_z = Cdouble[0]
-  foc_x = Cdouble[0]
-  foc_y = Cdouble[0]
-  foc_z = Cdouble[0]
+  cam_x = Ref{Cdouble}()
+  cam_y = Ref{Cdouble}()
+  cam_z = Ref{Cdouble}()
+  up_x = Ref{Cdouble}()
+  up_y = Ref{Cdouble}()
+  up_z = Ref{Cdouble}()
+  foc_x = Ref{Cdouble}()
+  foc_y = Ref{Cdouble}()
+  foc_z = Ref{Cdouble}()
   ccall( libGR_ptr(:gr_inqtransformationparameters),
         Nothing,
         (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}),
         cam_x, cam_y, cam_z, up_x, up_y, up_z, foc_x, foc_y, foc_z)
-  return cam_x[1], cam_y[1], cam_z[1], up_x[1], up_y[1], up_z[1], foc_x[1], foc_y[1], foc_z[1]
+  return cam_x[], cam_y[], cam_z[], up_x[], up_y[], up_z[], foc_x[], foc_y[], foc_z[]
 end
 
 function polygonmesh3d(px, py, pz, connections, colors)
