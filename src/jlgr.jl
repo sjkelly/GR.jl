@@ -781,19 +781,20 @@ function to_rgba(value, cmap)
     end
 end
 
-function create_context(kind::Symbol, dict=plt[].kvs)
-    plt[].kvs[:kind] = kind
-    create_context(dict)
+function create_context!(plt, kind::Symbol, dict=plt[].kvs)
+    plt.kvs[:kind] = kind
+    create_context!(plt, dict)
 end
 
-function create_context(dict::AbstractDict)
-    plt[].obj = copy(plt[].kvs)
+function create_context!(plt, dict::AbstractDict)
+    empty!(plt.obj)
+    merge!(plt.obj, plt.kvs)
     for k in keys(dict)
         if ! (k in kw_args)
             println("Invalid keyword: $k")
         end
     end
-    merge!(plt[].kvs, dict)
+    merge!(plt.kvs, dict)
 end
 
 function restore_context()
@@ -821,7 +822,7 @@ arguments.
 """
 function figure(; kv...)
     plt[] = Figure()
-    merge!(plt[].kvs, Dict(kv))
+    merge!(plt[].kvs, Dict{Symbol, Any}(kv))
     plt[]
 end
 
@@ -1171,10 +1172,14 @@ function contains_NaN(a)
     false
 end
 
-function plot_data(plt, flag=true)
+"""
+
+
+"""
+function plot_preamble!(plt, flag)
 
     if isempty(plt.args)
-        return
+        return false
     end
 
     GR.init()
@@ -1189,7 +1194,7 @@ function plot_data(plt, flag=true)
         if target == "pluto" || target == "js"
           return GR.js.get_html()
         end
-        return
+        return false
     end
 
     kind = get(plt.kvs, :kind, :line)
@@ -1245,6 +1250,16 @@ function plot_data(plt, flag=true)
     end
 
     GR.uselinespec(" ")
+
+    return true
+end
+
+function plot_data(plt, flag=true)
+
+    plot_preamble!(plt, flag) || return
+
+    kind = get(plt.kvs, :kind, :line)
+
     for (x, y, z, c, spec) in plt.args
         GR.savestate()
         if haskey(plt.kvs, :alpha)
@@ -1666,7 +1681,6 @@ function plot_args!(plt, @nospecialize args; fmt=:xys, append=false)
         if c !== nothing
             isvector(c) && (c = vec(c))
         end
-
         if z === nothing
             if isa(x, AbstractVector) && isa(y, AbstractVector)
                 push!(plt.args, (x, y, z, c, spec))
@@ -1736,7 +1750,7 @@ This function can receive one or more of the following:
 
 """
 function plot(args::PlotArg...; kv...)
-    create_context(:line, Dict(kv))
+    create_context!(plt[], :line, Dict{Symbol, Any}(kv))
 
     if plt[].kvs[:ax]
         plot_args!(plt[], args, append=true)
@@ -1771,7 +1785,7 @@ This function can receive one or more of the following:
     julia> oplot(x, x -> x^3 + x^2 + x)
 """
 function oplot(args::PlotArg...; kv...)
-    create_context(:line, Dict(kv))
+    create_context!(plt[], :line, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, append=true)
 
@@ -1810,7 +1824,7 @@ This function can receive one or more of the following:
     julia> stairs(y, where="post")
 """
 function stairs(args...; kv...)
-    create_context(:stairs, Dict(kv))
+    create_context!(plt[], :stairs, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyac)
 
@@ -1854,7 +1868,7 @@ current colormap.
     julia> scatter(x, y, s, c)
 """
 function scatter(args...; kv...)
-    create_context(:scatter, Dict(kv))
+    create_context!(plt[], :scatter, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyac)
 
@@ -1887,7 +1901,7 @@ This function can receive one or more of the following:
     julia> stem(y)
 """
 function stem(args...; kv...)
-    create_context(:stem, Dict(kv))
+    create_context!(plt[], :stem, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args)
 
@@ -1937,10 +1951,10 @@ the bars (by default vertical).
     julia> barplot(keys(population), values(population), horizontal=true)
 """
 function barplot(labels, heights; kv...)
-    kv = Dict(kv)
+    kv = Dict{Symbol, Any}(kv)
     wc, hc = barcoordinates(heights; kv...)
     horizontal = pop!(kv, :horizontal, false)
-    create_context(:bar, kv)
+    create_context!(plt[], :bar, kv)
     if horizontal
         plt[].args = [(hc, wc, nothing, nothing, "")]
         yticks(1,1)
@@ -1993,7 +2007,7 @@ otherwise the given number of bins is used for the histogram.
     julia> histogram(x, nbins=19)
 """
 function histogram(x; kv...)
-    create_context(:hist, Dict(kv))
+    create_context!(plt[], :hist, Dict{Symbol, Any}(kv))
 
     nbins = get(plt[].kvs, :nbins, 0)
     x, y = hist(x, nbins)
@@ -2024,7 +2038,7 @@ otherwise the given number of bins is used for the histogram.
     julia> polarhistogram(x, nbins=19, alpha=0.5)
 """
 function polarhistogram(x; kv...)
-    create_context(:polarhist, Dict(kv))
+    create_context!(plt[], :polarhist, Dict{Symbol, Any}(kv))
 
     nbins = get(plt[].kvs, :nbins, 0)
     x, y = hist(x, nbins)
@@ -2070,7 +2084,7 @@ provided points, a value of 0 will be used.
     julia> contour(x, y, (x,y) -> sin(x) + cos(y))
 """
 function contour(args...; kv...)
-    create_context(:contour, Dict(kv))
+    create_context!(plt[], :contour, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyzc)
 
@@ -2114,7 +2128,7 @@ provided points, a value of 0 will be used.
     julia> contourf(x, y, (x,y) -> sin(x) + cos(y))
 """
 function contourf(args...; kv...)
-    create_context(:contourf, Dict(kv))
+    create_context!(plt[], :contourf, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyzc)
 
@@ -2144,7 +2158,7 @@ display a series of points. It  can receive one or more of the following:
     julia> hexbin(x, y)
 """
 function hexbin(args...; kv...)
-    create_context(:hexbin, Dict(kv))
+    create_context!(plt[], :hexbin, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args)
 
@@ -2178,7 +2192,7 @@ be neccessary to adjust these limits or clip the range of array values.
     julia> heatmap(z)
 """
 function heatmap(D; kv...)
-    create_context(:heatmap, Dict(kv))
+    create_context!(plt[], :heatmap, Dict{Symbol, Any}(kv))
 
     if ndims(D) == 2
         z = D'
@@ -2193,7 +2207,7 @@ function heatmap(D; kv...)
 end
 
 function heatmap(x, y, z; kv...)
-    create_context(:nonuniformheatmap, Dict(kv))
+    create_context!(plt[], :nonuniformheatmap, Dict{Symbol, Any}(kv))
 
     if ndims(z) == 2
         plt[].args = [(x, y, z', nothing, "")]
@@ -2205,7 +2219,7 @@ function heatmap(x, y, z; kv...)
 end
 
 function polarheatmap(D; kv...)
-    create_context(:polarheatmap, Dict(kv))
+    create_context!(plt[], :polarheatmap, Dict{Symbol, Any}(kv))
 
     if ndims(D) == 2
         z = D'
@@ -2220,7 +2234,7 @@ function polarheatmap(D; kv...)
 end
 
 function polarheatmap(x, y, z; kv...)
-    create_context(:nonuniformpolarheatmap, Dict(kv))
+    create_context!(plt[], :nonuniformpolarheatmap, Dict{Symbol, Any}(kv))
 
     if ndims(z) == 2
         plt[].args = [(x, y, z', nothing, "")]
@@ -2268,7 +2282,7 @@ provided points, a value of 0 will be used.
     julia> wireframe(x, y, (x,y) -> sin(x) + cos(y))
 """
 function wireframe(args...; kv...)
-    create_context(:wireframe, Dict(kv))
+    create_context!(plt[], :wireframe, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyzc)
 
@@ -2312,7 +2326,7 @@ provided points, a value of 0 will be used.
     julia> surface(x, y, (x,y) -> sin(x) + cos(y))
 """
 function surface(args...; kv...)
-    create_context(:surface, Dict(kv))
+    create_context!(plt[], :surface, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyzc)
 
@@ -2320,7 +2334,7 @@ function surface(args...; kv...)
 end
 
 function volume(V; kv...)
-    create_context(:volume, Dict(kv))
+    create_context!(plt[], :volume, Dict{Symbol, Any}(kv))
 
     plt[].args = [(nothing, nothing, nothing, V, "")]
 
@@ -2346,7 +2360,7 @@ Draw one or more three-dimensional line plots.
     julia> plot3(x, y, z)
 """
 function plot3(args...; kv...)
-    create_context(:plot3, Dict(kv))
+    create_context!(plt[], :plot3, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyzc)
 
@@ -2379,7 +2393,7 @@ color. Color values will be used in combination with the current colormap.
     julia> scatter3(x, y, z, c)
 """
 function scatter3(args...; kv...)
-    create_context(:scatter3, Dict(kv))
+    create_context!(plt[], :scatter3, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyzc)
 
@@ -2408,7 +2422,7 @@ attributes like the title, axes labels, legend, etc.
 
 """
 function redraw(; kv...)
-    create_context(Dict(kv))
+    create_context!(plt[], Dict{Symbol, Any}(kv))
     plot_data(plt[])
 end
 
@@ -2599,7 +2613,7 @@ for .png, .jpg, .pdf, .ps, .gif and various other file formats.
     julia> savefig("example.png")
 """
 function savefig(filename; kv...)
-    merge!(plt[].kvs, Dict(kv))
+    merge!(plt[].kvs, Dict{Symbol, Any}(kv))
     GR.beginprint(filename)
     plot_data(false)
     GR.endprint()
@@ -2641,7 +2655,7 @@ two-dimensional array and the current colormap.
     julia> imshow("example.png")
 """
 function imshow(I; kv...)
-    create_context(:imshow, Dict(kv))
+    create_context!(plt[], :imshow, Dict{Symbol, Any}(kv))
 
     plt[].args = [(nothing, nothing, nothing, I, "")]
 
@@ -2670,7 +2684,7 @@ the isovalue will be seen as inside the isosurface.
     julia> isosurface(v, isovalue=0.2)
 """
 function isosurface(V; kv...)
-    create_context(:isosurface, Dict(kv))
+    create_context!(plt[], :isosurface, Dict{Symbol, Any}(kv))
 
     plt[].args = [(nothing, nothing, nothing, V, "")]
 
@@ -2716,7 +2730,7 @@ This function can receive one or more of the following:
     julia> polar(angles, r -> cos(r) ^ 2)
 """
 function polar(args...; kv...)
-    create_context(:polar, Dict(kv))
+    create_context!(plt[], :polar, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args)
 
@@ -2748,7 +2762,7 @@ plot, as the interpolation may occur in very acute triangles.
     julia> trisurf(x, y, z)
 """
 function trisurf(args...; kv...)
-    create_context(:trisurf, Dict(kv))
+    create_context!(plt[], :trisurf, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyzc)
 
@@ -2780,7 +2794,7 @@ plot, as the interpolation may occur in very acute triangles.
     julia> tricont(x, y, z)
 """
 function tricont(args...; kv...)
-    create_context(:tricont, Dict(kv))
+    create_context!(plt[], :tricont, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xyzc)
 
@@ -2788,7 +2802,7 @@ function tricont(args...; kv...)
 end
 
 function shade(args...; kv...)
-    create_context(:shade, Dict(kv))
+    create_context!(plt[], :shade, Dict{Symbol, Any}(kv))
 
     plot_args!(plt[], args, fmt=:xys)
 
