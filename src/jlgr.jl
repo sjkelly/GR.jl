@@ -1549,18 +1549,20 @@ end
 
 function plot_args!(plt, @nospecialize args; fmt=:xys, append=false)
 
-    args = Any[args...]
-
     if !append
         empty!(plt.args)
     end
 
-    while length(args) > 0
+    i = 1
+    while i <= length(args)
+
 
         # parse arguments for plotting
 
         local x, y, z, c
-        a = popfirst!(args)
+        a = args[i]
+        i += 1
+
         if isa(a, AbstractVecOrMat) || isa(a, Function)
             elt = eltype(a)
             if elt <: Complex
@@ -1570,10 +1572,11 @@ function plot_args!(plt, @nospecialize args; fmt=:xys, append=false)
                 c = nothing
             elseif elt <: Real || isa(a, Function)
                 if fmt == :xys
-                    if length(args) >= 1 &&
-                       (isa(args[1], AbstractVecOrMat) && eltype(args[1]) <: Real || isa(args[1], Function))
+                    if length(args) - i >= 0 &&
+                       (isa(args[i], AbstractVecOrMat) && eltype(args[i]) <: Real || isa(args[i], Function))
                         x = a
-                        y = popfirst!(args)
+                        y = args[i]
+                        i += 1
                         z = nothing
                         c = nothing
                     else
@@ -1589,34 +1592,40 @@ function plot_args!(plt, @nospecialize args; fmt=:xys, append=false)
                         c = nothing
                     end
                 elseif fmt == :xyac || fmt == :xyzc
-                    if length(args) >= 3 &&
-                        isa(args[1], AbstractVecOrMat) && eltype(args[1]) <: Real &&
-                       (isa(args[2], AbstractVecOrMat) && eltype(args[2]) <: Real || isa(args[2], Function)) &&
-                       (isa(args[3], AbstractVecOrMat) && eltype(args[3]) <: Real || isa(args[3], Function))
+                    if length(args) - i >= 2 &&
+                        isa(args[i], AbstractVecOrMat) && eltype(args[i]) <: Real &&
+                       (isa(args[i+1], AbstractVecOrMat) && eltype(args[i+1]) <: Real || isa(args[i+1], Function)) &&
+                       (isa(args[i+2], AbstractVecOrMat) && eltype(args[i+2]) <: Real || isa(args[i+2], Function))
                         x = a
-                        y = popfirst!(args)
-                        z = popfirst!(args)
+                        y = args[i]
+                        i += 1
+                        z = args[i]
+                        i += 1
                         if !isa(z, Function)
                             z = z'
                         end
-                        c = popfirst!(args)
-                    elseif length(args) >= 2 &&
-                        isa(args[1], AbstractVecOrMat) && eltype(args[1]) <: Real &&
-                       (isa(args[2], AbstractVecOrMat) && eltype(args[2]) <: Real || isa(args[2], Function))
+                        c = args[i]
+                        i += 1
+                    elseif length(args) - i >= 1 &&
+                        isa(args[i], AbstractVecOrMat) && eltype(args[i]) <: Real &&
+                       (isa(args[i+1], AbstractVecOrMat) && eltype(args[i+1]) <: Real || isa(args[i+1], Function))
                         x = a
-                        y = popfirst!(args)
-                        z = popfirst!(args)
+                        y = args[i]
+                        i += 1
+                        z = args[i]
+                        i += 1
                         if !isa(z, Function)
                             z = z'
                         end
                         c = nothing
-                    elseif fmt == :xyac && length(args) >= 1 &&
-                       (isa(args[1], AbstractVecOrMat) && eltype(args[1]) <: Real || isa(args[1], Function))
+                    elseif fmt == :xyac && (length(args) - i >= 0) &&
+                       (isa(args[i], AbstractVecOrMat) && eltype(args[i]) <: Real || isa(args[i], Function))
                         x = a
-                        y = popfirst!(args)
+                        y = args[i]
+                        i += 1
                         z = nothing
                         c = nothing
-                    elseif fmt == :xyzc && isempty(args)
+                    elseif fmt == :xyzc && (length(args) == i)
                         z = a'
                         nx, ny = size(z)
                         if haskey(plt.kvs, :xlim)
@@ -1649,11 +1658,13 @@ function plot_args!(plt, @nospecialize args; fmt=:xys, append=false)
             z = Float64[f(a,b) for a in x, b in y]
         end
         spec = ""
-        if fmt == :xys && length(args) > 0
-            if isa(args[1], AbstractString)
-                spec = popfirst!(args)
-            elseif length(args) == 1
-                c = popfirst!(args)
+        if fmt == :xys && i < length(args)
+            if isa(args[i], AbstractString)
+                spec = args[i]
+                i += 1
+            elseif length(args) - i == 1
+                c = args[i]
+                i += 1
             end
         end
 
