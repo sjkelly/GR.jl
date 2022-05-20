@@ -24,13 +24,7 @@ using RelocatableFolders
 
 @static if isdefined(Base, :Experimental) &&
            isdefined(Base.Experimental, Symbol("@optlevel"))
-    Base.Experimental.@optlevel 1
-end
-
-if Sys.KERNEL == :NT
-  const os = :Windows
-else
-  const os = Sys.KERNEL
+    Base.Experimental.@optlevel 2
 end
 
 const depsfile = @path joinpath(dirname(@__DIR__), "deps", "deps.jl")
@@ -38,11 +32,11 @@ const depsfile_succeeded = Ref(true)
 # Include Builder module in case we need to rebuild
 const buildfile = @path joinpath(dirname(@__DIR__), "deps", "build.jl")
 
-if os == :Windows
+@static if Sys.iswindows()
     const libGR = "libGR.dll"
     const libGR3 = "libGR3.dll"
     const libGRM = "libGRM.dll"
-elseif os == :Darwin
+elseif Sys.isapple()
     const libGR = "libGR.dylib"
     const libGR3 = "libGR3.dylib"
     const libGRM = "libGRM.dylib"
@@ -324,7 +318,7 @@ function __init__()
     # Determine grdir
     # The environmental variable GRDIR can override the binary provider
     # If GRDIR is "", then it will force a rebuild.
-    if "GRDIR" in keys(ENV)
+    if haskey(ENV, "GRDIR")
         grdir[] = ENV["GRDIR"]
     elseif gr_provider[] == "BinaryBuilder"
         # Defer until load_libs() when we import GR_jll
@@ -340,7 +334,7 @@ function __init__()
         end
     end
 
-    if grdir[] == "" || !depsfile_succeeded[]
+    if isempty(grdir[]) || !depsfile_succeeded[]
         grdir[] = grdir_default
         if isdir(grdir[]) && gr_provider[] == "GR"
             # No need to rebuild, just use grdir_default as grdir
@@ -445,16 +439,16 @@ function init(always::Bool = false)
         ENV["GRDIR"] = grdir[]
         ENV["GKS_FONTPATH"] = grdir[]
         ENV["GKS_USE_CAIRO_PNG"] = "true"
-        if "GRDISPLAY" in keys(ENV)
+        if haskey(ENV, "GRDISPLAY")
             display_name[] = ENV["GRDISPLAY"]
             if display_name[] == "js" || display_name[] == "pluto" || display_name[] == "js-server"
                 send_c[], recv_c[] = js.initjs()
             end
             @debug "Found GRDISPLAY in ENV" display_name[]
-        elseif "GKS_NO_GUI" in keys(ENV)
+        elseif haskey(ENV, "GKS_NO_GUI")
             @debug "Found GKS_NO_GUI in ENV, returning"
             return
-        elseif "GKS_WSTYPE" in keys(ENV)
+        elseif haskey(ENV, "GKS_WSTYPE")
             mime_type[] = ""
             @debug "Force user-defined output type" ENV["GKS_WSTYPE"]
         elseif isijulia() || ispluto() || isvscode() || isatom()
@@ -467,24 +461,24 @@ function init(always::Bool = false)
             if !haskey(ENV, "GKSwstype")
                 ENV["GKSwstype"] = "gksqt"
             end
-            if os == :Windows
+            @static if Sys.iswindows()
                 if !haskey(ENV, "GKS_QT")
                     ENV["GKS_QT"] = string("set PATH=", GR_jll.LIBPATH[], " & \"", GR_jll.gksqt_path, "\"")
-                elseif ENV["GKS_QT"] == ""
+                elseif isempty(ENV["GKS_QT"])
                     ENV["PATH"] = GR_jll.LIBPATH[]
                     gkqst = run(`$(GR_jll.gksqt_path)`; wait = false)
                     # gksqt(gkscmd -> run(`gksqt`; wait=false))
                 end
             else
-                env = (os == :Darwin) ? "DYLD_FALLBACK_LIBRARY_PATH" : "LD_LIBRARY_PATH"
+                env = Sys.isapple() ? "DYLD_FALLBACK_LIBRARY_PATH" : "LD_LIBRARY_PATH"
                 ENV["GKS_QT"] = string("env $env=", GR_jll.LIBPATH[], " ", GR_jll.gksqt_path)
             end
-            @debug "BinaryBuilder Setup" ENV["GKSwstype"] os ENV["GKS_QT"] ENV["PATH"] GR_jll.LIBPATH[] GR_jll.gksqt_path
+            @debug "BinaryBuilder Setup" ENV["GKSwstype"] ENV["GKS_QT"] ENV["PATH"] GR_jll.LIBPATH[] GR_jll.gksqt_path
         end
-        if "GKS_IGNORE_ENCODING" in keys(ENV)
+        if haskey(ENV, "GKS_IGNORE_ENCODING")
             text_encoding[] = ENCODING_UTF8
             @debug "Found GKS_IGNORE_ENCODING in ENV" text_encoding[]
-        elseif "GKS_ENCODING" in keys(ENV)
+        elseif haskey(ENV, "GKS_ENCODING")
             if ENV["GKS_ENCODING"] == "latin1" || ENV["GKS_ENCODING"] == "latin-1"
                 text_encoding[] = ENCODING_LATIN1
             else
@@ -554,7 +548,7 @@ function inqdspsize()
 end
 
 """
-    openws(workstation_id::Int, connection, workstation_type::Int)
+    openws(workstation_id, connection, workstation_type)
 
 Open a graphical workstation.
 
@@ -622,7 +616,7 @@ Available workstation types:
     +-------------+------------------------------------------------------+
 
 """
-function openws(workstation_id::Int, connection, workstation_type::Int)
+function openws(workstation_id, connection, workstation_type)
   ccall( libGR_ptr(:gr_openws),
         Nothing,
         (Int32, Ptr{Cchar}, Int32),
@@ -630,7 +624,7 @@ function openws(workstation_id::Int, connection, workstation_type::Int)
 end
 
 """
-    closews(workstation_id::Int)
+    closews(workstation_id)
 
 Close the specified workstation.
 
@@ -640,7 +634,7 @@ Close the specified workstation.
     A workstation identifier.
 
 """
-function closews(workstation_id::Int)
+function closews(workstation_id)
   ccall( libGR_ptr(:gr_closews),
         Nothing,
         (Int32, ),
@@ -648,7 +642,7 @@ function closews(workstation_id::Int)
 end
 
 """
-    activatews(workstation_id::Int)
+    activatews(workstation_id)
 
 Activate the specified workstation.
 
@@ -658,7 +652,7 @@ Activate the specified workstation.
     A workstation identifier.
 
 """
-function activatews(workstation_id::Int)
+function activatews(workstation_id)
   ccall( libGR_ptr(:gr_activatews),
         Nothing,
         (Int32, ),
@@ -666,7 +660,7 @@ function activatews(workstation_id::Int)
 end
 
 """
-    deactivatews(workstation_id::Int)
+    deactivatews(workstation_id)
 
 Deactivate the specified workstation.
 
@@ -676,7 +670,7 @@ Deactivate the specified workstation.
     A workstation identifier.
 
 """
-function deactivatews(workstation_id::Int)
+function deactivatews(workstation_id)
   ccall( libGR_ptr(:gr_deactivatews),
         Nothing,
         (Int32, ),
@@ -867,7 +861,7 @@ function fillarea(x, y)
 end
 
 """
-    cellarray(xmin::Real, xmax::Real, ymin::Real, ymax::Real, dimx::Int, dimy::Int, color)
+    cellarray(xmin::Real, xmax::Real, ymin::Real, ymax::Real, dimx, dimy, color)
 
 Display rasterlike images in a device-independent manner. The cell array
 function partitions a rectangle given by two corner points into DIMX X DIMY
@@ -888,7 +882,7 @@ of the given cell array.
 The values for `xmin`, `xmax`, `ymin` and `ymax` are in world coordinates.
 
 """
-function cellarray(xmin::Real, xmax::Real, ymin::Real, ymax::Real, dimx::Int, dimy::Int, color)
+function cellarray(xmin::Real, xmax::Real, ymin::Real, ymax::Real, dimx, dimy, color)
   if ndims(color) == 2
     color = reshape(color, dimx * dimy)
   end
@@ -899,7 +893,7 @@ function cellarray(xmin::Real, xmax::Real, ymin::Real, ymax::Real, dimx::Int, di
 end
 
 """
-    nonuniformcellarray(x, y, dimx::Int, dimy::Int, color)
+    nonuniformcellarray(x, y, dimx, dimy, color)
 
 Display a two dimensional color index array with nonuniform cell sizes.
 
@@ -917,7 +911,7 @@ and `y` must contain `dimy` + 1 elements. The elements i and i+1 are respectivel
 of the i-th cell in X and Y direction.
 
 """
-function nonuniformcellarray(x, y, dimx::Int, dimy::Int, color)
+function nonuniformcellarray(x, y, dimx, dimy, color)
   @assert dimx <= length(x) <= dimx+1 && dimy <= length(y) <= dimy+1
   if ndims(color) == 2
     color = reshape(color, dimx * dimy)
@@ -931,7 +925,7 @@ function nonuniformcellarray(x, y, dimx::Int, dimy::Int, color)
 end
 
 """
-    polarcellarray(xorg::Real, yorg::Real, phimin::Real, phimax::Real, rmin::Real, rmax::Real, imphi::Int, dimr::Int, color)
+    polarcellarray(xorg::Real, yorg::Real, phimin::Real, phimax::Real, rmin::Real, rmax::Real, imphi, dimr, color)
 
 Display a two dimensional color index array mapped to a disk using polar
 coordinates.
@@ -962,7 +956,7 @@ radius of the disk is `rmax`.
 
 """
 function polarcellarray(xorg::Real, yorg::Real, phimin::Real, phimax::Real, rmin::Real, rmax::Real,
-                        dimphi::Int, dimr::Int, color)
+                        dimphi, dimr, color)
   if ndims(color) == 2
     color = reshape(color, dimphi * dimr)
   end
@@ -973,7 +967,7 @@ function polarcellarray(xorg::Real, yorg::Real, phimin::Real, phimax::Real, rmin
 end
 
 """
-    nonuniformpolarcellarray(x, y, dimx::Int, dimy::Int, color)
+    nonuniformpolarcellarray(x, y, dimx, dimy, color)
 
 Display a two dimensional color index array mapped to a disk using nonuniform
 polar coordinates.
@@ -991,7 +985,7 @@ The two dimensional color index array is mapped to the resulting image by
 interpreting the X-axis of the array as the angle and the Y-axis as the radius.
 
 """
-function nonuniformpolarcellarray(x, y, dimx::Int, dimy::Int, color)
+function nonuniformpolarcellarray(x, y, dimx, dimy, color)
   @assert dimx <= length(x) <= dimx+1 && dimy <= length(y) <= dimy+1
   if ndims(color) == 2
     color = reshape(color, dimx * dimy)
@@ -1199,8 +1193,8 @@ end
 function to_rgb_color(z)
     z = (z .- minimum(z)) ./ (maximum(z) - minimum(z))
     n = length(z)
-    rgb = zeros(Int, n)
-    for i in 1:n
+    rgb = Vector{Int}(undef, n)
+    @inbounds for i in 1:n
         rgb[i] = inqcolor(1000 + round(Int, z[i] * 255))
     end
     rgb
@@ -1277,7 +1271,7 @@ function gridit(xd, yd, zd, nx, ny)
 end
 
 """
-    setlinetype(style::Int)
+    setlinetype(style)
 
 Specify the line style for polylines.
 
@@ -1315,7 +1309,7 @@ The available line types are:
     +---------------------------+----+---------------------------------------------------+
 
 """
-function setlinetype(style::Int)
+function setlinetype(style)
   ccall( libGR_ptr(:gr_setlinetype),
         Nothing,
         (Int32, ),
@@ -1346,7 +1340,7 @@ function setlinewidth(width::Real)
 end
 
 """
-    setlinecolorind(color::Int)
+    setlinecolorind(color)
 
 Define the color of subsequent polyline output primitives.
 
@@ -1356,7 +1350,7 @@ Define the color of subsequent polyline output primitives.
     The polyline color index (COLOR < 1256)
 
 """
-function setlinecolorind(color::Int)
+function setlinecolorind(color)
   ccall( libGR_ptr(:gr_setlinecolorind),
         Nothing,
         (Int32, ),
@@ -1364,7 +1358,7 @@ function setlinecolorind(color::Int)
 end
 
 """
-    setmarkertype(mtype::Int)
+    setmarkertype(mtype)
 
 Specifiy the marker type for polymarkers.
 
@@ -1454,7 +1448,7 @@ The available marker types are:
 Polymarkers appear centered over their specified coordinates.
 
 """
-function setmarkertype(mtype::Int)
+function setmarkertype(mtype)
   ccall( libGR_ptr(:gr_setmarkertype),
         Nothing,
         (Int32, ),
@@ -1483,7 +1477,7 @@ function setmarkersize(mtype::Real)
 end
 
 """
-    setmarkercolorind(color::Int)
+    setmarkercolorind(color)
 
 Define the color of subsequent polymarker output primitives.
 
@@ -1493,7 +1487,7 @@ Define the color of subsequent polymarker output primitives.
     The polymarker color index (COLOR < 1256)
 
 """
-function setmarkercolorind(color::Int)
+function setmarkercolorind(color)
   ccall( libGR_ptr(:gr_setmarkercolorind),
         Nothing,
         (Int32, ),
@@ -1501,7 +1495,7 @@ function setmarkercolorind(color::Int)
 end
 
 """
-    settextfontprec(font::Int, precision::Int)
+    settextfontprec(font, precision)
 
 Specify the text font and precision for subsequent text output primitives.
 
@@ -1594,7 +1588,7 @@ realization of the text primitives, for efficiency. STRING is the default
 precision for GR and produces the highest quality output.
 
 """
-function settextfontprec(font::Int, precision::Int)
+function settextfontprec(font, precision)
   ccall( libGR_ptr(:gr_settextfontprec),
         Nothing,
         (Int32, Int32),
@@ -1631,7 +1625,7 @@ function setcharspace(spacing::Real)
 end
 
 """
-    settextcolorind(color::Int)
+    settextcolorind(color)
 
 Sets the current text color index.
 
@@ -1644,7 +1638,7 @@ Sets the current text color index.
 GR uses the default foreground color (black=1) for the default text color index.
 
 """
-function settextcolorind(color::Int)
+function settextcolorind(color)
   ccall( libGR_ptr(:gr_settextcolorind),
         Nothing,
         (Int32, ),
@@ -1704,7 +1698,7 @@ function setcharup(ux::Real, uy::Real)
 end
 
 """
-    settextpath(path::Int)
+    settextpath(path)
 
 Define the current direction in which subsequent text will be drawn.
 
@@ -1724,7 +1718,7 @@ Define the current direction in which subsequent text will be drawn.
     +----------------------+---+---------------+
 
 """
-function settextpath(path::Int)
+function settextpath(path)
   ccall( libGR_ptr(:gr_settextpath),
         Nothing,
         (Int32, ),
@@ -1732,7 +1726,7 @@ function settextpath(path::Int)
 end
 
 """
-    settextalign(horizontal::Int, vertical::Int)
+    settextalign(horizontal, vertical)
 
 Set the current horizontal and vertical alignment for text.
 
@@ -1772,7 +1766,7 @@ alignment and vertical baseline alignment.
     +-------------------------+---+------------------------------------------------+
 
 """
-function settextalign(horizontal::Int, vertical::Int)
+function settextalign(horizontal, vertical)
   ccall( libGR_ptr(:gr_settextalign),
         Nothing,
         (Int32, Int32),
@@ -1780,7 +1774,7 @@ function settextalign(horizontal::Int, vertical::Int)
 end
 
 """
-    setfillintstyle(style::Int)
+    setfillintstyle(style)
 
 Set the fill area interior style to be used for fill areas.
 
@@ -1803,7 +1797,7 @@ primitives. The default interior style is HOLLOW.
     +---------+---+--------------------------------------------------------------------------------+
 
 """
-function setfillintstyle(style::Int)
+function setfillintstyle(style)
   ccall( libGR_ptr(:gr_setfillintstyle),
         Nothing,
         (Int32, ),
@@ -1811,7 +1805,7 @@ function setfillintstyle(style::Int)
 end
 
 """
-    setfillstyle(index::Int)
+    setfillstyle(index)
 
 Sets the fill style to be used for subsequent fill areas.
 
@@ -1827,7 +1821,7 @@ the fill style index indicates different hatch styles. If HOLLOW or SOLID is spe
 for the interior style, the fill style index is unused.
 
 """
-function setfillstyle(index::Int)
+function setfillstyle(index)
   ccall( libGR_ptr(:gr_setfillstyle),
         Nothing,
         (Int32, ),
@@ -1835,7 +1829,7 @@ function setfillstyle(index::Int)
 end
 
 """
-    setfillcolorind(color::Int)
+    setfillcolorind(color)
 
 Sets the current fill area color index.
 
@@ -1848,7 +1842,7 @@ Sets the current fill area color index.
 GR uses the default foreground color (black=1) for the default fill area color index.
 
 """
-function setfillcolorind(color::Int)
+function setfillcolorind(color)
   ccall( libGR_ptr(:gr_setfillcolorind),
         Nothing,
         (Int32, ),
@@ -1856,7 +1850,7 @@ function setfillcolorind(color::Int)
 end
 
 """
-    setcolorrep(index::Int, red::Real, green::Real, blue::Real)
+    setcolorrep(index, red::Real, green::Real, blue::Real)
 
 `setcolorrep` allows to redefine an existing color index representation by specifying
 an RGB color triplet.
@@ -1873,7 +1867,7 @@ an RGB color triplet.
     Blue intensity in the range 0.0 to 1.0
 
 """
-function setcolorrep(index::Int, red::Real, green::Real, blue::Real)
+function setcolorrep(index, red::Real, green::Real, blue::Real)
   ccall( libGR_ptr(:gr_setcolorrep),
         Nothing,
         (Int32, Float64, Float64, Float64),
@@ -1881,7 +1875,7 @@ function setcolorrep(index::Int, red::Real, green::Real, blue::Real)
 end
 
 """
-    setscale(options::Int)
+    setscale(options)
 
 `setscale` sets the type of transformation to be used for subsequent GR output
 primitives.
@@ -2034,7 +2028,7 @@ function inqviewport()
 end
 
 """
-    selntran(transform::Int)
+    selntran(transform)
 
 `selntran` selects a predefined transformation from world coordinates to normalized
 device coordinates.
@@ -2051,7 +2045,7 @@ device coordinates.
     +------+----------------------------------------------------------------------------------------------------+
 
 """
-function selntran(transform::Int)
+function selntran(transform)
   ccall( libGR_ptr(:gr_selntran),
         Nothing,
         (Int32, ),
@@ -2059,7 +2053,7 @@ function selntran(transform::Int)
 end
 
 """
-    setclip(indicator::Int)
+    setclip(indicator)
 
 Set the clipping indicator.
 
@@ -2082,7 +2076,7 @@ boundaries, and they will be drawn to the edge of the workstation window.
 By default, clipping is on.
 
 """
-function setclip(indicator::Int)
+function setclip(indicator)
   ccall( libGR_ptr(:gr_setclip),
         Nothing,
         (Int32, ),
@@ -2147,14 +2141,14 @@ function setwsviewport(xmin::Real, xmax::Real, ymin::Real, ymax::Real)
         xmin, xmax, ymin, ymax)
 end
 
-function createseg(segment::Int)
+function createseg(segment)
   ccall( libGR_ptr(:gr_createseg),
         Nothing,
         (Int32, ),
         segment)
 end
 
-function copyseg(segment::Int)
+function copyseg(segment)
   ccall( libGR_ptr(:gr_copysegws),
         Nothing,
         (Int32, ),
@@ -2168,7 +2162,7 @@ function redrawseg()
         )
 end
 
-function setsegtran(segment::Int, fx::Real, fy::Real, transx::Real, transy::Real, phi::Real, scalex::Real, scaley::Real)
+function setsegtran(segment, fx::Real, fy::Real, transx::Real, transy::Real, phi::Real, scalex::Real, scaley::Real)
   ccall( libGR_ptr(:gr_setsegtran),
         Nothing,
         (Int32, Float64, Float64, Float64, Float64, Float64, Float64, Float64),
@@ -2197,7 +2191,7 @@ function updategks()
 end
 
 """
-    setspace(zmin::Real, zmax::Real, rotation::Int, tilt::Int)
+    setspace(zmin::Real, zmax::Real, rotation, tilt)
 
 Set the abstract Z-space used for mapping three-dimensional output primitives into
 the current world coordinate space.
@@ -2221,7 +2215,7 @@ other values are specified. Angles of rotation and viewing angle must be specifi
 between 0° and 90°.
 
 """
-function setspace(zmin::Real, zmax::Real, rotation::Int, tilt::Int)
+function setspace(zmin::Real, zmax::Real, rotation, tilt)
   space = ccall( libGR_ptr(:gr_setspace),
                 Int32,
                 (Float64, Float64, Int32, Int32),
@@ -2340,7 +2334,7 @@ function inqtextext(x::Real, y::Real, string)
 end
 
 """
-    axes2d(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x::Int, major_y::Int, tick_size::Real)
+    axes2d(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x, major_y, tick_size::Real)
 
 Draw X and Y coordinate axes with linearly and/or logarithmically spaced tick marks.
 
@@ -2369,17 +2363,17 @@ are drawn using solid lines; line color and width can be modified using the
 the linear or logarithmic transformation established by the `setscale` function.
 
 """
-function axes2d(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x::Int, major_y::Int, tick_size::Real)
+function axes2d(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x, major_y, tick_size::Real)
   ccall( libGR_ptr(:gr_axes),
         Nothing,
         (Float64, Float64, Float64, Float64, Int32, Int32, Float64),
         x_tick, y_tick, x_org, y_org, major_x, major_y, tick_size)
 end
 
-axes(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x::Int, major_y::Int, tick_size::Real) = axes2d(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x::Int, major_y::Int, tick_size::Real)
+axes(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x, major_y, tick_size::Real) = axes2d(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x, major_y, tick_size::Real)
 
 """
-    function axeslbl(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x::Int, major_y::Int, tick_size::Real, fpx::Function, fpy::Function)
+    function axeslbl(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x, major_y, tick_size::Real, fpx::Function, fpy::Function)
 
 Draw X and Y coordinate axes with linearly and/or logarithmically spaced tick marks.
 
@@ -2418,7 +2412,7 @@ by the `setscale` function.
     Floating point representation of the label drawn at `(x,y)`.
 
 """
-function axeslbl(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x::Int, major_y::Int, tick_size::Real, fx::Function, fy::Function)
+function axeslbl(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x, major_y, tick_size::Real, fx::Function, fy::Function)
   fx_c = @cfunction($fx, Int32, (Float64, Float64, Cstring, Float64))
   fy_c = @cfunction($fy, Int32, (Float64, Float64, Cstring, Float64))
   ccall( libGR_ptr(:gr_axeslbl),
@@ -2429,7 +2423,7 @@ end
 
 
 """
-    grid(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x::Int, major_y::Int)
+    grid(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x, major_y)
 
 Draw a linear and/or logarithmic grid.
 
@@ -2449,14 +2443,14 @@ or not. Minor grid lines are drawn at points equal to minor tick marks. Major gr
 lines are drawn using black lines and minor grid lines are drawn using gray lines.
 
 """
-function grid(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x::Int, major_y::Int)
+function grid(x_tick::Real, y_tick::Real, x_org::Real, y_org::Real, major_x, major_y)
   ccall( libGR_ptr(:gr_grid),
         Nothing,
         (Float64, Float64, Float64, Float64, Int32, Int32),
         x_tick, y_tick, x_org, y_org, major_x, major_y)
 end
 
-function grid3d(x_tick::Real, y_tick::Real, z_tick::Real, x_org::Real, y_org::Real, z_org::Real, major_x::Int, major_y::Int, major_z::Int)
+function grid3d(x_tick::Real, y_tick::Real, z_tick::Real, x_org::Real, y_org::Real, z_org::Real, major_x, major_y, major_z)
   ccall( libGR_ptr(:gr_grid3d),
         Nothing,
         (Float64, Float64, Float64, Float64, Float64, Float64, Int32, Int32, Int32),
@@ -2572,7 +2566,7 @@ function polymarker3d(px, py, pz)
         n, convert(Vector{Float64}, px), convert(Vector{Float64}, py), convert(Vector{Float64}, pz))
 end
 
-function axes3d(x_tick::Real, y_tick::Real, z_tick::Real, x_org::Real, y_org::Real, z_org::Real, major_x::Int, major_y::Int, major_z::Int, tick_size::Real)
+function axes3d(x_tick::Real, y_tick::Real, z_tick::Real, x_org::Real, y_org::Real, z_org::Real, major_x, major_y, major_z, tick_size::Real)
   ccall( libGR_ptr(:gr_axes3d),
         Nothing,
         (Float64, Float64, Float64, Float64, Float64, Float64, Int32, Int32, Int32, Float64),
@@ -2598,7 +2592,7 @@ function titles3d(x_title, y_title, z_title)
 end
 
 """
-    surface(px, py, pz, option::Int)
+    surface(px, py, pz, option)
 
 Draw a three-dimensional surface plot for the given data points.
 
@@ -2635,7 +2629,7 @@ Data is ordered as shown in the following table:
     +------------------+--+--------------------------------------------------------------+
 
 """
-function surface(px, py, pz, option::Int)
+function surface(px, py, pz, option)
   nx = length(px)
   ny = length(py)
   if isa(pz, Function)
@@ -2664,7 +2658,7 @@ function surface(px, py, pz, option::Int)
 end
 
 """
-    contour(px, py, h, pz, major_h::Int)
+    contour(px, py, h, pz, major_h)
 
 Draw contours of a three-dimensional data set whose values are specified over a
 rectangular mesh. Contour lines may optionally be labeled.
@@ -2687,7 +2681,7 @@ rectangular mesh. Contour lines may optionally be labeled.
     of 1000 to `major_h`.
 
 """
-function contour(px, py, h, pz, major_h::Int)
+function contour(px, py, h, pz, major_h)
   nx = length(px)
   ny = length(py)
   nh = length(h)
@@ -2717,7 +2711,7 @@ function contour(px, py, h, pz, major_h::Int)
 end
 
 """
-    contourf(px, py, h, pz, major_h::Int)
+    contourf(px, py, h, pz, major_h)
 
 Draw filled contours of a three-dimensional data set whose values are
 specified over a rectangular mesh.
@@ -2737,7 +2731,7 @@ specified over a rectangular mesh.
     (intended for future use)
 
 """
-function contourf(px, py, h, pz, major_h::Int)
+function contourf(px, py, h, pz, major_h)
   nx = length(px)
   ny = length(py)
   nh = length(h)
@@ -2776,7 +2770,7 @@ function hexbin(x, y, nbins)
   return cntmax
 end
 
-function setcolormap(index::Int)
+function setcolormap(index)
   ccall( libGR_ptr(:gr_setcolormap),
         Nothing,
         (Int32, ),
@@ -2790,7 +2784,7 @@ function colorbar()
         )
 end
 
-function inqcolor(color::Int)
+function inqcolor(color)
   rgb = Ref{Cint}()
   ccall( libGR_ptr(:gr_inqcolor),
         Nothing,
@@ -3132,7 +3126,7 @@ function fillarc(xmin::Real, xmax::Real, ymin::Real, ymax::Real, a1::Real, a2::R
 end
 
 """
-    drawpath(points, codes, fill::Int)
+    drawpath(points, codes, fill)
 
 Draw simple and compound outlines consisting of line segments and bezier curves.
 
@@ -3162,7 +3156,7 @@ The following path codes are recognized:
     +----------+-----------------------------------------------------------+
 
 """
-function drawpath(points, codes, fill::Int)
+function drawpath(points, codes, fill)
   len = length(codes)
   ccall( libGR_ptr(:gr_drawpath),
         Nothing,
@@ -3171,7 +3165,7 @@ function drawpath(points, codes, fill::Int)
 end
 
 """
-    setarrowstyle(style::Int)
+    setarrowstyle(style)
 
 Set the arrow style to be used for subsequent arrow commands.
 
@@ -3222,7 +3216,7 @@ The default arrow style is 1.
     +---+----------------------------------+
 
 """
-function setarrowstyle(style::Int)
+function setarrowstyle(style)
   ccall( libGR_ptr(:gr_setarrowstyle),
         Nothing,
         (Int32, ),
@@ -3291,7 +3285,7 @@ function readimage(path)
 end
 
 """
-    drawimage(xmin::Real, xmax::Real, ymin::Real, ymax::Real, width::Int, height::Int, data, model::Int = 0)
+    drawimage(xmin::Real, xmax::Real, ymin::Real, ymax::Real, width, height, data, model = 0)
 
 Draw an image into a given rectangular area.
 
@@ -3323,7 +3317,7 @@ diagonally opposite corner points of a rectangle. This rectangle is divided into
 for each cell.
 
 """
-function drawimage(xmin::Real, xmax::Real, ymin::Real, ymax::Real, width::Int, height::Int, data, model::Int = 0)
+function drawimage(xmin::Real, xmax::Real, ymin::Real, ymax::Real, width, height, data, model = 0)
   if ndims(data) == 2
     data = reshape(data, width * height)
   end
@@ -3500,26 +3494,26 @@ const INTSTYLE_SOLID = 1
 const INTSTYLE_PATTERN = 2
 const INTSTYLE_HATCH = 3
 
-const TEXT_HALIGN_NORMAL = 0
-const TEXT_HALIGN_LEFT = 1
-const TEXT_HALIGN_CENTER = 2
-const TEXT_HALIGN_RIGHT = 3
-const TEXT_VALIGN_NORMAL = 0
-const TEXT_VALIGN_TOP = 1
-const TEXT_VALIGN_CAP = 2
-const TEXT_VALIGN_HALF = 3
-const TEXT_VALIGN_BASE = 4
-const TEXT_VALIGN_BOTTOM = 5
+const TEXT_HALIGN_NORMAL = 0x00
+const TEXT_HALIGN_LEFT = 0x01
+const TEXT_HALIGN_CENTER = 0x02
+const TEXT_HALIGN_RIGHT = 0x03
+const TEXT_VALIGN_NORMAL = 0x00
+const TEXT_VALIGN_TOP = 0x01
+const TEXT_VALIGN_CAP = 0x02
+const TEXT_VALIGN_HALF = 0x03
+const TEXT_VALIGN_BASE = 0x04
+const TEXT_VALIGN_BOTTOM = 0x05
 
-const TEXT_PATH_RIGHT = 0
-const TEXT_PATH_LEFT = 1
-const TEXT_PATH_UP = 2
-const TEXT_PATH_DOWN = 3
+const TEXT_PATH_RIGHT = 0x00
+const TEXT_PATH_LEFT = 0x01
+const TEXT_PATH_UP = 0x02
+const TEXT_PATH_DOWN = 0x03
 
-const TEXT_PRECISION_STRING = 0
-const TEXT_PRECISION_CHAR = 1
-const TEXT_PRECISION_STROKE = 2
-const TEXT_PRECISION_OUTLINE = 3
+const TEXT_PRECISION_STRING = 0x00
+const TEXT_PRECISION_CHAR = 0x01
+const TEXT_PRECISION_STROKE = 0x02
+const TEXT_PRECISION_OUTLINE = 0x03
 
 const LINETYPE_SOLID = 1
 const LINETYPE_DASHED = 2
@@ -3572,18 +3566,18 @@ const MARKERTYPE_VLINE = -30
 const MARKERTYPE_HLINE = -31
 const MARKERTYPE_OMARK = -32
 
-const OPTION_X_LOG  = UInt32(1)
-const OPTION_Y_LOG  = UInt32(2)
-const OPTION_Z_LOG  = UInt32(4)
-const OPTION_FLIP_X = UInt32(8)
-const OPTION_FLIP_Y = UInt32(16)
-const OPTION_FLIP_Z = UInt32(32)
-const OPTION_X_LOG2 = UInt32(64)
-const OPTION_Y_LOG2 = UInt32(128)
-const OPTION_Z_LOG2 = UInt32(256)
-const OPTION_X_LN   = UInt32(512)
-const OPTION_Y_LN   = UInt32(1024)
-const OPTION_Z_LN   = UInt32(2048)
+const OPTION_X_LOG  = Int32(1)
+const OPTION_Y_LOG  = Int32(2)
+const OPTION_Z_LOG  = Int32(4)
+const OPTION_FLIP_X = Int32(8)
+const OPTION_FLIP_Y = Int32(16)
+const OPTION_FLIP_Z = Int32(32)
+const OPTION_X_LOG2 = Int32(64)
+const OPTION_Y_LOG2 = Int32(128)
+const OPTION_Z_LOG2 = Int32(256)
+const OPTION_X_LN   = Int32(512)
+const OPTION_Y_LN   = Int32(1024)
+const OPTION_Z_LN   = Int32(2048)
 
 const OPTION_LINES = 0
 const OPTION_MESH = 1
@@ -3646,37 +3640,37 @@ const COLORMAP_INFERNO = 45
 const COLORMAP_PLASMA = 46
 const COLORMAP_MAGMA = 47
 
-const FONT_TIMES_ROMAN = 101
-const FONT_TIMES_ITALIC = 102
-const FONT_TIMES_BOLD = 103
-const FONT_TIMES_BOLDITALIC = 104
-const FONT_HELVETICA = 105
-const FONT_HELVETICA_OBLIQUE = 106
-const FONT_HELVETICA_BOLD = 107
-const FONT_HELVETICA_BOLDOBLIQUE = 108
-const FONT_COURIER = 109
-const FONT_COURIER_OBLIQUE = 110
-const FONT_COURIER_BOLD = 111
-const FONT_COURIER_BOLDOBLIQUE = 112
-const FONT_SYMBOL = 113
-const FONT_BOOKMAN_LIGHT = 114
-const FONT_BOOKMAN_LIGHTITALIC = 115
-const FONT_BOOKMAN_DEMI = 116
-const FONT_BOOKMAN_DEMIITALIC = 117
-const FONT_NEWCENTURYSCHLBK_ROMAN = 118
-const FONT_NEWCENTURYSCHLBK_ITALIC = 119
-const FONT_NEWCENTURYSCHLBK_BOLD = 120
-const FONT_NEWCENTURYSCHLBK_BOLDITALIC = 121
-const FONT_AVANTGARDE_BOOK = 122
-const FONT_AVANTGARDE_BOOKOBLIQUE = 123
-const FONT_AVANTGARDE_DEMI = 124
-const FONT_AVANTGARDE_DEMIOBLIQUE = 125
-const FONT_PALATINO_ROMAN = 126
-const FONT_PALATINO_ITALIC = 127
-const FONT_PALATINO_BOLD = 128
-const FONT_PALATINO_BOLDITALIC = 129
-const FONT_ZAPFCHANCERY_MEDIUMITALIC = 130
-const FONT_ZAPFDINGBATS = 131
+const FONT_TIMES_ROMAN = Int32(101)
+const FONT_TIMES_ITALIC = Int32(102)
+const FONT_TIMES_BOLD = Int32(103)
+const FONT_TIMES_BOLDITALIC = Int32(104)
+const FONT_HELVETICA = Int32(105)
+const FONT_HELVETICA_OBLIQUE = Int32(106)
+const FONT_HELVETICA_BOLD = Int32(107)
+const FONT_HELVETICA_BOLDOBLIQUE = Int32(108)
+const FONT_COURIER = Int32(109)
+const FONT_COURIER_OBLIQUE = Int32(110)
+const FONT_COURIER_BOLD = Int32(111)
+const FONT_COURIER_BOLDOBLIQUE = Int32(112)
+const FONT_SYMBOL = Int32(113)
+const FONT_BOOKMAN_LIGHT = Int32(114)
+const FONT_BOOKMAN_LIGHTITALIC = Int32(115)
+const FONT_BOOKMAN_DEMI = Int32(116)
+const FONT_BOOKMAN_DEMIITALIC = Int32(117)
+const FONT_NEWCENTURYSCHLBK_ROMAN = Int32(118)
+const FONT_NEWCENTURYSCHLBK_ITALIC = Int32(119)
+const FONT_NEWCENTURYSCHLBK_BOLD = Int32(120)
+const FONT_NEWCENTURYSCHLBK_BOLDITALIC = Int32(121)
+const FONT_AVANTGARDE_BOOK = Int32(122)
+const FONT_AVANTGARDE_BOOKOBLIQUE = Int32(123)
+const FONT_AVANTGARDE_DEMI = Int32(124)
+const FONT_AVANTGARDE_DEMIOBLIQUE = Int32(125)
+const FONT_PALATINO_ROMAN = Int32(126)
+const FONT_PALATINO_ITALIC = Int32(127)
+const FONT_PALATINO_BOLD = Int32(128)
+const FONT_PALATINO_BOLDITALIC = Int32(129)
+const FONT_ZAPFCHANCERY_MEDIUMITALIC = Int32(130)
+const FONT_ZAPFDINGBATS = Int32(131)
 
 const PATH_STOP      = 0x00
 const PATH_MOVETO    = 0x01
@@ -3838,14 +3832,14 @@ function restorestate()
         )
 end
 
-function selectcontext(context::Int)
+function selectcontext(context)
   ccall( libGR_ptr(:gr_selectcontext),
         Nothing,
         (Int32, ),
         context)
 end
 
-function destroycontext(context::Int)
+function destroycontext(context)
   ccall( libGR_ptr(:gr_destroycontext),
         Nothing,
         (Int32, ),
@@ -3878,7 +3872,7 @@ function delaunay(x, y)
   end
 end
 
-function interp2(X, Y, Z, Xq, Yq, method::Int=0, extrapval=0)
+function interp2(X, Y, Z, Xq, Yq, method=0, extrapval=0)
   nx = length(X)
   ny = length(Y)
   if isa(Z, Function)
@@ -4215,7 +4209,7 @@ function setborderwidth(width::Real)
 end
 
 """
-    setbordercolorind(color::Int)
+    setbordercolorind(color)
 
 Define the color of subsequent path output primitives.
 
@@ -4225,14 +4219,14 @@ Define the color of subsequent path output primitives.
     The border color index (COLOR < 1256)
 
 """
-function setbordercolorind(color::Int)
+function setbordercolorind(color)
   ccall( libGR_ptr(:gr_setbordercolorind),
         Nothing,
         (Int32, ),
         color)
 end
 
-function setprojectiontype(type::Int)
+function setprojectiontype(type)
   ccall( libGR_ptr(:gr_setprojectiontype),
         Nothing,
         (Int32, ),
@@ -4283,16 +4277,16 @@ function setspace3d(rot::Real, tilt::Real, fov::Real, dist::Real)
         rot, tilt, fov, dist)
 end
 
-function text3d(x::Real, y::Real, z::Real, string, axis::Int)
+function text3d(x::Real, y::Real, z::Real, string, axis)
   ccall( libGR_ptr(:gr_text3d),
         Nothing,
         (Float64, Float64, Float64, Ptr{UInt8}, Int32),
         x, y, z, latin1(string), axis)
 end
 
-function inqtext3d(x::Real, y::Real, z::Real, string, axis::Int)
-  tbx = Cdouble[0 for i in 1:16]
-  tby = Cdouble[0 for i in 1:16]
+function inqtext3d(x::Real, y::Real, z::Real, string, axis)
+  tbx = zeros(16)
+  tby = zeros(16)
   ccall( libGR_ptr(:gr_inqtext3d),
         Nothing,
         (Float64, Float64, Float64, Ptr{UInt8}, Int32, Ptr{Cdouble}, Ptr{Cdouble}),
