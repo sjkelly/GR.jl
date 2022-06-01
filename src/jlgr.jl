@@ -193,7 +193,7 @@ function set_viewport(kind, subplot)
     viewport[4] = vp3 + (0.975 - top_margin) * (vp4 - vp3)
 
     if kind in (:line, :stairs, :scatter, :stem) && haskey(plt[].kvs, :labels)
-        location = get(plt[].kvs, :location, 1)
+        location = convert(Int, get(plt[].kvs, :location, 1))
         if location in (11, 12, 13)
             w, h = legend_size()
             viewport[2] -= w + 0.1
@@ -374,13 +374,13 @@ end
 
 function set_window(kind)
     if !(kind in (:polar, :polarhist, :polarheatmap, :nonuniformpolarheatmap))
-        scale = get(plt[].kvs, :scale, 0)
-        get(plt[].kvs, :xlog, false) && (scale |= GR.OPTION_X_LOG)
-        get(plt[].kvs, :ylog, false) && (scale |= GR.OPTION_Y_LOG)
-        get(plt[].kvs, :zlog, false) && (scale |= GR.OPTION_Z_LOG)
-        get(plt[].kvs, :xflip, false) && (scale |= GR.OPTION_FLIP_X)
-        get(plt[].kvs, :yflip, false) && (scale |= GR.OPTION_FLIP_Y)
-        get(plt[].kvs, :zflip, false) && (scale |= GR.OPTION_FLIP_Z)
+        scale = convert(Int, get(plt[].kvs, :scale, 0))
+        convert(Bool, get(plt[].kvs, :xlog, false)) && (scale |= GR.OPTION_X_LOG)
+        convert(Bool, get(plt[].kvs, :ylog, false)) && (scale |= GR.OPTION_Y_LOG)
+        convert(Bool, get(plt[].kvs, :zlog, false)) && (scale |= GR.OPTION_Z_LOG)
+        convert(Bool, get(plt[].kvs, :xflip, false)) && (scale |= GR.OPTION_FLIP_X)
+        convert(Bool, get(plt[].kvs, :yflip, false)) && (scale |= GR.OPTION_FLIP_Y)
+        convert(Bool, get(plt[].kvs, :zflip, false)) && (scale |= GR.OPTION_FLIP_Z)
     else
         scale = 0
     end
@@ -483,8 +483,8 @@ function set_window(kind)
         GR.setwindow(-1, 1, -1, 1)
     end
     if kind in (:wireframe, :surface, :plot3, :scatter3, :trisurf, :volume)
-        rotation = get(plt[].kvs, :rotation, 40)
-        tilt = get(plt[].kvs, :tilt, 60)
+        rotation = convert(Int, get(plt[].kvs, :rotation, 40))
+        tilt = convert(Int, get(plt[].kvs, :tilt, 60))
         GR.setwindow3d(xmin, xmax, ymin, ymax, zmin, zmax)
         GR.setspace3d(-rotation, tilt, 30, 0)
     end
@@ -510,7 +510,7 @@ function draw_axes(kind, pass=1)
     vp = plt[].kvs[:vp]
     xtick, xorg, majorx = plt[].kvs[:xaxis]
     ytick, yorg, majory = plt[].kvs[:yaxis]
-    drawgrid = get(plt[].kvs, :grid, true)
+    drawgrid = convert(Bool, get(plt[].kvs, :grid, true))
     # enforce scientific notation for logarithmic axes labels
     if plt[].kvs[:scale] & GR.OPTION_X_LOG != 0
         xtick = 10
@@ -558,9 +558,9 @@ function draw_axes(kind, pass=1)
         GR.restorestate()
     end
     if kind in (:wireframe, :surface, :plot3, :scatter3, :trisurf, :volume)
-        xlabel = get(plt[].kvs, :xlabel, "")
-        ylabel = get(plt[].kvs, :ylabel, "")
-        zlabel = get(plt[].kvs, :zlabel, "")
+        xlabel = convert(String, get(plt[].kvs, :xlabel, ""))
+        ylabel = convert(String, get(plt[].kvs, :ylabel, ""))
+        zlabel = convert(String, get(plt[].kvs, :zlabel, ""))
         GR.titles3d(xlabel, ylabel, zlabel)
     else
         if haskey(plt[].kvs, :xlabel)
@@ -665,7 +665,7 @@ hasmarker(mask) = ( mask & 0x02 != 0)
 function draw_legend()
     w, h = legend_size()
     viewport = plt[].kvs[:viewport]
-    location = get(plt[].kvs, :location, 1)
+    location = convert(Int, get(plt[].kvs, :location, 1))
     num_labels = length(plt[].kvs[:labels])
     GR.savestate()
     GR.selntran(0)
@@ -728,10 +728,10 @@ function colorbar(off=0, colors=256)
     viewport = plt[].kvs[:viewport]
     zmin, zmax = plt[].kvs[:zrange]
     mask = (GR.OPTION_Z_LOG | GR.OPTION_FLIP_Y | GR.OPTION_FLIP_Z)
-    if get(plt[].kvs, :zflip, false)
+    if convert(Bool, get(plt[].kvs, :zflip, false))
         options = (GR.inqscale() | GR.OPTION_FLIP_Y)
         GR.setscale(options & mask)
-    elseif get(plt[].kvs, :yflip, false)
+    elseif convert(Bool, get(plt[].kvs, :yflip, false))
         options = GR.inqscale() & ~GR.OPTION_FLIP_Y
         GR.setscale(options & mask)
     else
@@ -1022,10 +1022,10 @@ function plot_img(I)
 
     GR.selntran(0)
     GR.setscale(0)
-    if get(plt[].kvs, :xflip, false)
+    if convert(Bool, get(plt[].kvs, :xflip, false))
         tmp = xmax; xmax = xmin; xmin = tmp;
     end
-    if get(plt[].kvs, :yflip, false)
+    if convert(Bool, get(plt[].kvs, :yflip, false))
         tmp = ymax; ymax = ymin; ymin = tmp;
     end
     if isa(I, AbstractString)
